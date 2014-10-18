@@ -51,11 +51,11 @@ void processCell(int i, int j, Board board){
 //This function iterates through the cells of the given board
 //Arguments: board, the current board.
 void iterateBoard(Board board){
-	int horizontalStringLenght = board->height + 1;
-	int verticalStringLenght = board->width + 1;
+	int verticalStringLength = board->height + 1;
+	int horizontalStringLength = board->width + 1;
 	size_t i, j;
-	for (i = 0; i < horizontalStringLenght; ++i) {
-		for (j = 0; j < verticalStringLenght; ++j) {
+	for (i = 0; i < verticalStringLength; ++i) {
+		for (j = 0; j < horizontalStringLength; ++j) {
 			processCell(i, j, board);                       //for each cell, process it.
 		}
 	}
@@ -120,18 +120,18 @@ Board parseFile(char* fileName){
 //This function performs the backtrack on the matrix, while filling the Longest Common Subsequence. Also prints the supposed output
 //Arguments: board, the current board
 void printResults(Board board){
-	int horizontalStringLenght = board->height;
-	int verticalStringLenght = board->width;
+	int verticalStringLength = board->height;
+	int horizontalStringLength = board->width;
 	size_t i, j;
-	int aux, finalSize = board->matrix[horizontalStringLenght][verticalStringLenght];           //finalsize, the last cell of the board, containing the size of the substring
+	int aux, finalSize = board->matrix[verticalStringLength][horizontalStringLength];           //finalsize, the last cell of the board, containing the size of the substring
 	char* subsequence = (char*) malloc(sizeof(char) * finalSize);
 	int** matrix = board->matrix;
 	char* horizontalString = board->horizontalString;
 	char* vectorWidth =board->verticalString;
 
 	/* just for testing */
-/*	for (i = 0; i < horizontalStringLenght; ++i) {
-		for (j = 0; j < verticalStringLenght; ++j) {
+/*	for (i = 0; i < verticalStringLength; ++i) {
+		for (j = 0; j < horizontalStringLength; ++j) {
 			printf("|%d|", board->matrix[i][j]);
 		}
 		printf("\n");
@@ -139,21 +139,21 @@ void printResults(Board board){
 */
 	aux = finalSize;
 	while(aux > 0){
-		if((matrix[horizontalStringLenght-1][verticalStringLenght] != aux) &&
-		   (matrix[horizontalStringLenght][verticalStringLenght-1] != aux)){            //if the left value, or the top value are lower: match
-			subsequence[aux -1] = board->horizontalString[horizontalStringLenght];      //add string to the subsequence
-			horizontalStringLenght--;
-			verticalStringLenght--;
+		if((matrix[verticalStringLength-1][horizontalStringLength] != aux) &&
+		   (matrix[verticalStringLength][horizontalStringLength-1] != aux)){            //if the left value, or the top value are lower: match
+			subsequence[aux -1] = board->horizontalString[verticalStringLength];      //add string to the subsequence
+			verticalStringLength--;
+			horizontalStringLength--;
 			aux--;
-		}else if (horizontalString[horizontalStringLenght] == vectorWidth[verticalStringLenght]) {  //if there is a match, move diagonally
-			subsequence[aux -1] = board->horizontalString[horizontalStringLenght];                   //add the value to the subsequence
-			horizontalStringLenght--;
-			verticalStringLenght--;
+		}else if (horizontalString[verticalStringLength] == vectorWidth[horizontalStringLength]) {  //if there is a match, move diagonally
+			subsequence[aux -1] = board->horizontalString[verticalStringLength];                   //add the value to the subsequence
+			verticalStringLength--;
+			horizontalStringLength--;
 			aux--;
-		}else if (matrix[horizontalStringLenght][verticalStringLenght-1] == aux) {
-			verticalStringLenght--;
-		}else if (matrix[horizontalStringLenght-1][verticalStringLenght] == aux) {
-			horizontalStringLenght--;
+		}else if (matrix[verticalStringLength][horizontalStringLength-1] == aux) {
+			horizontalStringLength--;
+		}else if (matrix[verticalStringLength-1][horizontalStringLength] == aux) {
+			verticalStringLength--;
 		}
 	}
 	printf("%d\n", finalSize);                              //print the final output

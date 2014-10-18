@@ -58,11 +58,19 @@ void iterateBoard(Board board){
 	int horizontalStringLength = board->width + 1;
 	size_t i, j;
 	//#pragma omp parallel for schedule (static, 1)
+	//printf("Starting to go through the board @iterateBoard\n");
+	double iterate_for_start = omp_get_wtime();
 	for (i = 0; i < verticalStringLength; ++i) {
+        //arranjar uma thread aqui, que faça a primeira linha
+        //quando ela estiver na segunda coluna começa a thread seguinte
+        //repetir até ao final da matriz
 		for (j = 0; j < horizontalStringLength; ++j) {
 			processCell(i, j, board);                       //for each cell, process it.
 		}
 	}
+	double iterate_for_end = omp_get_wtime();
+    double elapsed_iterate_for_time = iterate_for_end - iterate_for_start;
+    //printf("Iterate Board took: %f seconds\n", elapsed_iterate_for_time);
 }
 
 //Function intended to build the board, given a file
@@ -148,8 +156,8 @@ void printResults(Board board){
 	char* vectorWidth =board->verticalString;
 
 	/* just for testing */
-/*	for (i = 0; i < verticalStringLength; ++i) {
-		for (j = 0; j < horizontalStringLength; ++j) {
+/*	for (i = 0; i <= verticalStringLength; ++i) {
+		for (j = 0; j <= horizontalStringLength; ++j) {
 			printf("|%d|", board->matrix[i][j]);
 		}
 		printf("\n");

@@ -31,7 +31,6 @@ void unlockCell(int i, int j, Board board);
 void lockLine(int i, Board board);
 
 int main(int argc, char* argv[]){
-	omp_set_num_threads(3);
 	char* fileName = argv[1];
 	Board board = parseFile(fileName);
 	iterateBoard(board);
@@ -111,14 +110,21 @@ void iterateBoard(Board board){
 	int verticalStringLength = board->height + 1;
 	int horizontalStringLength = board->width + 1;
 	size_t i, j;
+	//lockLine(0, board);
 
 #pragma omp parallel private(i,j) shared(board)
 	{
 #pragma omp for schedule(static, 1)
 
-	for (i = 1; i < verticalStringLength; ++i) {
-		printf("@iteration, current line is: %zu, #thread: %d\n",i, omp_get_thread_num());
-		if(i != 0) lockLine(i, board);
+	for (i = 0; i < verticalStringLength; ++i) {
+		lockLine(i, board);
+	}
+#pragma omp barrier
+
+#pragma omp for schedule(static, 1)
+
+	for (i = 0; i < verticalStringLength; ++i) {
+		//printf("iteration: %d, #thread: %d\n",i, omp_get_thread_num());
 		for (j = 0; j < horizontalStringLength; ++j) {
 			processCell(i, j, board);                       //for each cell, process it.
 		}
@@ -157,7 +163,7 @@ void printResults(Board board){
 	char* horizontalString = board->horizontalString;
 	char* vectorWidth =board->verticalString;
 
-	/* just for testing */
+	/* just for testing
 	printf("    (/)");
 	for(i=0;i<=horizontalStringLength;i++){
 		printf("(%c)",board->horizontalString[i]);
@@ -165,7 +171,7 @@ void printResults(Board board){
 	printf("\n");
 
 	for (i = 0; i <= verticalStringLength; ++i) {
-		printf("i:%zu (%c)",i,board->verticalString[i]);
+		printf("i:%d (%c)",i,board->verticalString[i]);
 		for (j = 0; j <= horizontalStringLength; ++j) {
 			printf("|%d|", board->matrix[i][j]);
 		}
@@ -251,11 +257,10 @@ void unlockCell(int i, int j, Board board){
 
 void lockLine(int i, Board board){
 
-	int width = board->width +1;
+	int width = board->width + 1;
 	int offset = i * width;
 	int n;
 	for(n = 0; n < width; n++){
-	//	printf("@LockLine: I am thread #%d, and I'm locking these positions: %d with this offset %d \n", omp_get_thread_num(), n, offset);
 		omp_set_lock(&(board->locks[n + offset]));
 	}
 }

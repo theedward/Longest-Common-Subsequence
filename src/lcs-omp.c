@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -16,6 +15,7 @@ typedef struct {
 	char* horizontalString;
 	char* verticalString;
 	int** matrix;
+	omp_lock_t *locks;
 }board_t;
 
 typedef board_t* Board;
@@ -26,51 +26,18 @@ void processCell(int i, int j, Board board);
 void printResults(Board board);
 void iterateBoard(Board board);
 void cleanAll(Board board);
+void lockCell(int i, int j, Board board);
+void unlockCell(int i, int j, Board board);
+void lockLine(int i, Board board);
 
 int main(int argc, char* argv[]){
-
+	omp_set_num_threads(3);
 	char* fileName = argv[1];
 	Board board = parseFile(fileName);
 	iterateBoard(board);
 	printResults(board);
 	cleanAll(board);
 	return 0;
-}
-
-
-//This function applies the algorithm to the given cell on the board
-//Arguments: i, the column of the cell. j, the row of the cell. board, the current board.
-void processCell(int i, int j, Board board){
-	if (i == 0 || j == 0) {                                                             //First it checks if either i=0 or j=0, if so, we are in the first line/column so it must be filled with 0's
-		board->matrix[i][j] = 0;
-	} else if (board->horizontalString[i] == board->verticalString[j]) {                //Else, if there is a match, the current cell will be given the value of the diagonally left cell + the cost function (that is always 1)
-		board->matrix[i][j] = board->matrix[i - 1][j - 1] + cost(i+j);
-	}else{                                                                              //Else, means no match, the cell will be given the value of the highest of either the left cell or the top cell
-		board->matrix[i][j] = MAX(board->matrix[i - 1][j], board->matrix[i][j - 1]);
-	}
-}
-
-//This function iterates through the cells of the given board
-//Arguments: board, the current board.
-void iterateBoard(Board board){
-
-	int verticalStringLength = board->height + 1;
-	int horizontalStringLength = board->width + 1;
-	size_t i, j;
-	//#pragma omp parallel for schedule (static, 1)
-	//printf("Starting to go through the board @iterateBoard\n");
-	double iterate_for_start = omp_get_wtime();
-	for (i = 0; i < verticalStringLength; ++i) {
-        //arranjar uma thread aqui, que faça a primeira linha
-        //quando ela estiver na segunda coluna começa a thread seguinte
-        //repetir até ao final da matriz
-		for (j = 0; j < horizontalStringLength; ++j) {
-			processCell(i, j, board);                       //for each cell, process it.
-		}
-	}
-	double iterate_for_end = omp_get_wtime();
-    double elapsed_iterate_for_time = iterate_for_end - iterate_for_start;
-    //printf("Iterate Board took: %f seconds\n", elapsed_iterate_for_time);
 }
 
 //Function intended to build the board, given a file
@@ -84,7 +51,7 @@ Board parseFile(char* fileName){
 	char* verticalString;
 	int** matrix;
 	size_t n = 1;
-
+	omp_lock_t *locks;
 
 	if (!(file = fopen(fileName,"r"))){
 	    printf("Error opening file \"%s\"\n", fileName);
@@ -94,53 +61,88 @@ Board parseFile(char* fileName){
 	    printf("Could not read height and width");
 	    exit(3);
 	}
-	if(!(horizontalString = (char*) malloc(sizeof(char)*height + 1))||
-	   !(verticalString = (char*) malloc(sizeof(char)*width + 1))){
+	if(!(horizontalString = (char*) malloc(sizeof(char)*(height + 1)))||
+	   !(verticalString = (char*) malloc(sizeof(char)*(width + 1)))){
 		    printf("Error allocating row pointers for board.\n");
 		    exit(4);
 	}
 
 	while((c = fgetc(file)) != '\n'){
-		 horizontalString[n++] = (char)c;
+		 verticalString[n++] = (char)c;
 	}
+	verticalString[0]='/';
 
 	n = 1;
 	while((c = fgetc(file)) != '\n'){
-		verticalString[n++] = (char)c;
+		horizontalString[n++] = (char)c;
+	}
+	horizontalString[0] = '/';
+
+
+	matrix = (int**)malloc(sizeof(int*) * (height + 1));
+	for (n = 0; n < height + 1; ++n) {
+		matrix[n] = (int*)malloc(sizeof(int) * (width + 1));
+	}
+	fclose(file);
+	file = NULL;
+
+	Board result = (Board)malloc(sizeof(board_t));
+	locks = (omp_lock_t *)malloc(sizeof(omp_lock_t) * (height+1) * (width +1));
+
+	for(n = 0; n < ((height+1) * (width +1)); n++){
+		omp_init_lock(&(locks[n]));
 	}
 
-    Board result = (Board)malloc(sizeof(board_t));
-
-	matrix = (int**)malloc(sizeof(int*) * height + 1);
-	#pragma omp parallel
-	{
-    #pragma omp for schedule (dynamic)
-        for (n = 0; n < height + 1; ++n) {
-            matrix[n] = (int*)malloc(sizeof(int) * width + 1);
-        }
-
-      #pragma omp sections
-        {
-        #pragma omp section
-        {
-        fclose(file);
-        file = NULL;
-    }
-
-    #pragma omp section
-   	result->height =  height;
-   	#pragma omp section
+	result->height =  height;
 	result->width = width;
-	#pragma omp section
 	result->matrix = matrix;
-	#pragma omp section
 	result->horizontalString = horizontalString;
-	#pragma omp section
 	result->verticalString = verticalString;
-        }
-    }
+	result->locks = locks;
+
 	return result;
 
+}
+
+
+//This function iterates through the cells of the given board
+//Arguments: board, the current board.
+void iterateBoard(Board board){
+	int verticalStringLength = board->height + 1;
+	int horizontalStringLength = board->width + 1;
+	size_t i, j;
+
+#pragma omp parallel private(i,j) shared(board)
+	{
+#pragma omp for schedule(static, 1)
+
+	for (i = 1; i < verticalStringLength; ++i) {
+		printf("@iteration, current line is: %zu, #thread: %d\n",i, omp_get_thread_num());
+		if(i != 0) lockLine(i, board);
+		for (j = 0; j < horizontalStringLength; ++j) {
+			processCell(i, j, board);                       //for each cell, process it.
+		}
+	}
+	}
+}
+
+
+//This function applies the algorithm to the given cell on the board
+//Arguments: i, the column of the cell. j, the row of the cell. board, the current board.
+void processCell(int i, int j, Board board){
+
+	if (i == 0 || j == 0) {                                                             //First it checks if either i=0 or j=0, if so, we are in the first line/column so it must be filled with 0's
+		board->matrix[i][j] = 0;
+	} else if (board->horizontalString[j] == board->verticalString[i]) {                //Else, if there is a match, the current cell will be given the value of the diagonally left cell + the cost function (that is always 1)
+		lockCell(i-1, j-1, board);
+		board->matrix[i][j] = board->matrix[i - 1][j - 1] + cost(i+j);
+		unlockCell(i-1, j-1, board);
+	}else{                                                                              //Else, means no match, the cell will be given the value of the highest of either the left cell or the top cell
+		lockCell(i-1, j, board);
+		board->matrix[i][j] = MAX(board->matrix[i - 1][j], board->matrix[i][j - 1]);
+		unlockCell(i-1, j, board);
+	}
+	unlockCell(i,j,board);
 }
 
 //This function performs the backtrack on the matrix, while filling the Longest Common Subsequence. Also prints the supposed output
@@ -156,23 +158,31 @@ void printResults(Board board){
 	char* vectorWidth =board->verticalString;
 
 	/* just for testing */
-/*	for (i = 0; i <= verticalStringLength; ++i) {
+	printf("    (/)");
+	for(i=0;i<=horizontalStringLength;i++){
+		printf("(%c)",board->horizontalString[i]);
+	}
+	printf("\n");
+
+	for (i = 0; i <= verticalStringLength; ++i) {
+		printf("i:%zu (%c)",i,board->verticalString[i]);
 		for (j = 0; j <= horizontalStringLength; ++j) {
 			printf("|%d|", board->matrix[i][j]);
 		}
 		printf("\n");
 	}
-*/
+	/* just for testing */
+
 	aux = finalSize;
 	while(aux > 0){
 		if((matrix[verticalStringLength-1][horizontalStringLength] != aux) &&
 		   (matrix[verticalStringLength][horizontalStringLength-1] != aux)){            //if the left value, or the top value are lower: match
-			subsequence[aux -1] = board->horizontalString[verticalStringLength];      //add string to the subsequence
+			subsequence[aux -1] = board->horizontalString[horizontalStringLength];      //add string to the subsequence
 			verticalStringLength--;
 			horizontalStringLength--;
 			aux--;
-		}else if (horizontalString[verticalStringLength] == vectorWidth[horizontalStringLength]) {  //if there is a match, move diagonally
-			subsequence[aux -1] = board->horizontalString[verticalStringLength];                   //add the value to the subsequence
+		}else if (horizontalString[horizontalStringLength] == vectorWidth[verticalStringLength]) {  //if there is a match, move diagonally
+			subsequence[aux -1] = board->horizontalString[horizontalStringLength];                   //add the value to the subsequence
 			verticalStringLength--;
 			horizontalStringLength--;
 			aux--;
@@ -207,22 +217,45 @@ short cost(int x){
 void cleanAll(Board board){
 	size_t n;
 
-    #pragma omp parallel
-    {
-        #pragma omp sections
-        {
-            #pragma omp section
-            free(board->horizontalString);
-            #pragma omp section
-            free(board->verticalString);
-        }
+	free(board->horizontalString);
+	free(board->verticalString);
 
-            #pragma omp for
-            for(n = 0; n < board->height; n++){
-                free(board->matrix[n]);
-        }
-    }
+	for(n = 0; n <= board->height; n++){
+		free(board->matrix[n]);
+	}
+	for(n = 0; n < ((board->height +1) * (board->width +1)); n++){
+		omp_destroy_lock(&(board->locks[n]));
+	}
 	free(board->matrix);
 
+	free(board->locks);
+
 	free(board);
+}
+
+void lockCell(int i, int j, Board board){
+
+	int width = board->width + 1;
+	int offset = i * width + j;
+
+	omp_set_lock(&(board->locks[offset]));
+}
+
+void unlockCell(int i, int j, Board board){
+
+	int width = board->width + 1;
+	int offset = i * width + j;
+
+	omp_unset_lock(&(board->locks[offset]));
+}
+
+void lockLine(int i, Board board){
+
+	int width = board->width +1;
+	int offset = i * width;
+	int n;
+	for(n = 0; n < width; n++){
+	//	printf("@LockLine: I am thread #%d, and I'm locking these positions: %d with this offset %d \n", omp_get_thread_num(), n, offset);
+		omp_set_lock(&(board->locks[n + offset]));
+	}
 }

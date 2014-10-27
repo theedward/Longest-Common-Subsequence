@@ -106,22 +106,21 @@ Board parseFile(char* fileName){
 void printResults(board_t* board){
 	int heightLength = board->height;
 	int widthLength = board->width;
-
 	size_t i, j;
 	int aux, finalSize = board->matrix[heightLength][widthLength];
 	char* subsequence = (char*) malloc(sizeof(char) * finalSize);
 	int** matrix = board->matrix;
 
-	/* just for testing 
+	/* just for testing */
 	printf("    (/)");
-	for(i=0;i<=widthLength;i++){
+	for(i=0;i<=board->width;i++){
 		printf("(%c)",board->vectorWidth[i]);
 	}
 	printf("\n");
 
-	for (i = 0; i <= heightLength; ++i) {
-		printf("i:%zu (%c)",i,board->vectorHeight[i]);
-		for (j = 0; j <= widthLength; ++j) {
+	for (i = 0; i <= board->height; ++i) {
+		printf("i:%d (%c)",i,board->vectorHeight[i]);
+		for (j = 0; j <= board->width; ++j) {
 			printf("|%d|", board->matrix[i][j]);
 		}
 		printf("\n");
@@ -155,13 +154,7 @@ void printResults(board_t* board){
 
 	free(subsequence);
 	matrix = NULL;
-/*	for (i = 0; i < heightLength; ++i) {
-		for (j = 0; j < widthLength; ++j) {
-			printf("|%d|", board->matrix[i][j]);
-		}
-		printf("\n");
-	}
- just for testing */
+
 
 }
 short cost(int x){
@@ -184,3 +177,4 @@ void cleanAll(board_t* board){
 
 	free(board);
 }
+

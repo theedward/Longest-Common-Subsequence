@@ -93,8 +93,8 @@ Board parseFile(char* fileName){
 	    printf("Could not read height and width");
 	    exit(3);
 	}
-	if(!(vectorHeight = (char*) malloc(sizeof(char)*height + 1))||
-	   !(vectorWeidth = (char*) malloc(sizeof(char)*width + 1))){
+	if(!(vectorHeight = (char*) malloc(sizeof(char)*(height + 1)))||
+	   !(vectorWeidth = (char*) malloc(sizeof(char)*(width + 1)))){
 		    printf("Error allocating row pointers for board.\n");
 		    exit(4);
 	}
@@ -102,16 +102,17 @@ Board parseFile(char* fileName){
 	while((c = fgetc(file)) != '\n'){
 		 vectorHeight[n++] = (char)c;
 	}
+	vectorHeight[0] = '/';
 
 	n = 1;
 	while((c = fgetc(file)) != '\n'){
 		vectorWeidth[n++] = (char)c;
 	}
+	vectorWeidth[0] = '/';
 
-
-	matrix = (int**)malloc(sizeof(int*) * height + 1);
+	matrix = (int**)malloc(sizeof(int*) * (height + 1));
 	for (n = 0; n < height + 1; ++n) {
-		matrix[n] = (int*)malloc(sizeof(int) * width + 1);
+		matrix[n] = (int*)malloc(sizeof(int) * (width + 1));
 	}
 	fclose(file);
 	file = NULL;
@@ -200,7 +201,7 @@ void cleanAll(board_t* board){
 	free(board->vectorHeight);
 	free(board->vectorWidth);
 
-	for(n = 0; n < board->height; n++){
+	for(n = 0; n < (board->height + 1 ); n++){
 		free(board->matrix[n]);
 	}
 	for(n = 0; n < ((board->height +1) * (board->width +1)); n++){

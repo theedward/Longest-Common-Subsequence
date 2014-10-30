@@ -31,6 +31,13 @@ int main(int argc, char* argv[]){
 	return 0;
 }
 
+
+/* Function that applies the given algorithm.
+ * If the line or column are 0, fill the line or column with 0's
+ * If there is a match grab the value from the top left cell and add it cost
+ * Else grab the Max value from the left cell or top cell
+ * i, the line; j, the column; board, the current board
+ */
 void processCell(int i, int j, Board board){
 	if (i == 0 || j == 0) {
 		board->matrix[i][j] = 0;
@@ -40,6 +47,11 @@ void processCell(int i, int j, Board board){
 		board->matrix[i][j] = MAX(board->matrix[i - 1][j], board->matrix[i][j - 1]);
 	}
 }
+
+/* Function that iterates through the matrix
+ * Calls the processCell funtion on each cell
+ * board, the current board
+ */
 void iterateBoard(board_t* board){
 	int heightLength = board->height + 1;
 	int widthLength = board->width + 1;
@@ -50,6 +62,12 @@ void iterateBoard(board_t* board){
 		}
 	}
 }
+
+/* Function that reads the file and builds the board
+ * Builds the vertical and horizontal string, and allocs for matrix postions
+ * filename, the name of the file to be read
+ * returns the board (matrix)
+ */
 Board parseFile(char* fileName){
 	FILE* file;
 	int height;
@@ -104,6 +122,13 @@ Board parseFile(char* fileName){
 	return result;
 
 }
+
+/* Function that backtracks the matrix and fills the subsequence
+ * Starts from the bottom of the matrix and applies the backtracking rules
+ * If the letters match, move diagonally, else go left
+ * Prints out the final output
+ * board, the current board 
+ */
 void printResults(board_t* board){
 	int heightLength = board->height;
 	int widthLength = board->width;
@@ -158,6 +183,10 @@ void printResults(board_t* board){
 
 
 }
+
+/* Function to add computation time
+ * returns 1 always
+ */
 short cost(int x){
 	int i, n_iter = 20;
 	double dcost = 0;
@@ -165,6 +194,10 @@ short cost(int x){
 		dcost += pow(sin((double) x),2) + pow(cos((double) x),2);
 	return (short) (dcost / n_iter + 0.1);
 }
+
+/* 
+ * Clears the resourses used
+ */
 void cleanAll(board_t* board){
 	size_t n;
 

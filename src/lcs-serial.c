@@ -9,7 +9,7 @@ typedef struct {
 	int width;
 	char* vectorHeight;
 	char* vectorWidth;
-	int** matrix;
+	short int** matrix;
 }board_t;
 
 typedef board_t* Board;
@@ -57,7 +57,7 @@ Board parseFile(char* fileName){
 	int c;
 	char* vectorHeight;
 	char* vectorWeidth;
-	int** matrix;
+	short int** matrix;
 	size_t n = 1;
 
 
@@ -86,9 +86,9 @@ Board parseFile(char* fileName){
 	}
 	vectorWeidth[0] = '/';
 
-	matrix = (int**)malloc(sizeof(int*) * (height + 1));
+	matrix = (short int**)malloc(sizeof(short int*) * (height + 1));
 	for (n = 0; n < height + 1; ++n) {
-		matrix[n] = (int*)malloc(sizeof(int) * (width + 1));
+		matrix[n] = (short int*)malloc(sizeof(short int) * (width + 1));
 	}
 	fclose(file);
 	file = NULL;
@@ -110,9 +110,9 @@ void printResults(board_t* board){
 	size_t i, j;
 	int aux, finalSize = board->matrix[heightLength][widthLength];
 	char* subsequence = (char*) malloc(sizeof(char) * finalSize);
-	int** matrix = board->matrix;
+	short int** matrix = board->matrix;
 
-	/* just for testing */
+	/* just for testing 
 	printf("    (/)");
 	for(i=0;i<=board->width;i++){
 		printf("(%c)",board->vectorWidth[i]);
@@ -120,7 +120,7 @@ void printResults(board_t* board){
 	printf("\n");
 
 	for (i = 0; i <= board->height; ++i) {
-		printf("i:%zu (%c)",i,board->vectorHeight[i]);
+		printf("i:%d (%c)",i,board->vectorHeight[i]);
 		for (j = 0; j <= board->width; ++j) {
 			printf("|%d|", board->matrix[i][j]);
 		}
@@ -171,7 +171,7 @@ void cleanAll(board_t* board){
 	free(board->vectorHeight);
 	free(board->vectorWidth);
 
-	for(n = 0; n < (board->height + 1); n++){
+	for(n = 0; n < board->height; n++){
 		free(board->matrix[n]);
 	}
 	free(board->matrix);

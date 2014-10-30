@@ -11,7 +11,7 @@ typedef struct {
 	int width;
 	char* vectorHeight;
 	char* vectorWidth;
-	int** matrix;
+	short int** matrix;
 	omp_lock_t* locks;
 }board_t;
 
@@ -80,7 +80,7 @@ Board parseFile(char* fileName){
 	int c;
 	char* vectorHeight;
 	char* vectorWeidth;
-	int** matrix;
+	short int** matrix;
 	size_t n = 1;
 	omp_lock_t* locks;
 
@@ -102,35 +102,61 @@ Board parseFile(char* fileName){
 	while((c = fgetc(file)) != '\n'){
 		 vectorHeight[n++] = (char)c;
 	}
-	vectorHeight[0] = '/';
+	
 
 	n = 1;
 	while((c = fgetc(file)) != '\n'){
 		vectorWeidth[n++] = (char)c;
 	}
-	vectorWeidth[0] = '/';
+	
+	Board result = (Board)malloc(sizeof(board_t));
+	locks = (omp_lock_t*)malloc(sizeof(omp_lock_t)*(height+1)*(width+1));
 
-	matrix = (int**)malloc(sizeof(int*) * (height + 1));
-	for (n = 0; n < height + 1; ++n) {
-		matrix[n] = (int*)malloc(sizeof(int) * (width + 1));
-	}
+
+
+	#pragma omp parallel 
+	{
+	#pragma omp sections 
+	{
+	#pragma omp section
+	vectorHeight[0] = '/';
+	#pragma omp section
+	vectorWeidth[0] = '/';
+	#pragma omp section
+	{
 	fclose(file);
 	file = NULL;
-
-	locks = (omp_lock_t*)malloc(sizeof(omp_lock_t)*(height+1)*(width+1));
+	}
+	#pragma omp section
+	matrix = (short int**)malloc(sizeof(short int*) * (height + 1));
+	}
+	#pragma omp for private (n)
+	for (n = 0; n < height + 1; ++n) {
+		matrix[n] = (short int*)malloc(sizeof(short int) * (width + 1));
+	}
+	
+		
+	#pragma omp for private (n)
 	for(n = 0; n < ((height+1) * (width +1)); n++){
 		omp_init_lock(&(locks[n]));
 	}
 
-	Board result = (Board)malloc(sizeof(board_t));
-
+	#pragma omp sections
+	{
+	#pragma omp section	
 	result->height =  height;
+	#pragma omp section
 	result->width = width;
+	#pragma omp section
 	result->matrix = matrix;
+	#pragma omp section
 	result->vectorHeight = vectorHeight;
+	#pragma omp section
 	result->vectorWidth = vectorWeidth;
+	#pragma omp section
 	result->locks = locks;
-
+	}
+}
 	return result;
 
 }
@@ -140,7 +166,7 @@ void printResults(board_t* board){
 	size_t i, j;
 	int aux, finalSize = board->matrix[heightLength][widthLength];
 	char* subsequence = (char*) malloc(sizeof(char) * finalSize);
-	int** matrix = board->matrix;
+	short int** matrix = board->matrix;
 
 	/* just for testing
 	printf("    (/)");
@@ -197,20 +223,34 @@ short cost(int x){
 }
 void cleanAll(board_t* board){
 	size_t n;
-
+	
+	#pragma omp parallel 
+	{
+	#pragma omp sections
+	{
+	#pragma omp section
 	free(board->vectorHeight);
-	free(board->vectorWidth);
-
-	for(n = 0; n < (board->height + 1 ); n++){
+	#pragma omp section
+	free(board->vectorWidth);	
+	}
+	#pragma omp for private (n)
+	for(n = 0; n < board->height; n++){
 		free(board->matrix[n]);
 	}
+
+	#pragma omp for private (n)
 	for(n = 0; n < ((board->height +1) * (board->width +1)); n++){
 		omp_destroy_lock(&(board->locks[n]));
 	}
+	
+	#pragma omp sections
+	{
+	#pragma omp section
 	free(board->locks);
-
+	#pragma omp section
 	free(board->matrix);
-
+	}
+}
 	free(board);
 }
 
